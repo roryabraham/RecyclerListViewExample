@@ -9,6 +9,7 @@ import {
 import {DataProvider, LayoutProvider, RecyclerListView} from 'recyclerlistview';
 import {fetchPaginatedData} from './fakeServer';
 
+const INITIAL_LOWEST_SEQUENCE_NUMBER = 240;
 const LIMIT = 20;
 
 export class App extends Component {
@@ -19,9 +20,10 @@ export class App extends Component {
         return r1 !== r2;
       }),
       data: [],
-      lowestSequenceNumber: 0,
+      lowestSequenceNumber: INITIAL_LOWEST_SEQUENCE_NUMBER,
       highestSequenceNumber: 0,
-      loadingMore: false,
+      loadingOlder: false,
+      loadingNewer: false,
     };
   }
 
@@ -34,7 +36,6 @@ export class App extends Component {
   );
 
   fetchData = async (offset, limit) => {
-    this.setState({...this.state, loadingMore: true});
     const data = await fetchPaginatedData(offset, limit);
     this.setState(prevState => {
       const lowestSequenceNumber =
@@ -53,7 +54,8 @@ export class App extends Component {
       return {
         data: mergedData,
         dataProvider: prevState.dataProvider.cloneWithRows(mergedData),
-        loadingMore: false,
+        loadingNewer: false,
+        loadingOlder: false,
         lowestSequenceNumber,
         highestSequenceNumber,
       };
@@ -61,19 +63,23 @@ export class App extends Component {
   };
 
   componentDidMount() {
-    this.fetchData(240, LIMIT);
+    this.fetchData(INITIAL_LOWEST_SEQUENCE_NUMBER, LIMIT);
   }
 
   rowRenderer = (type, item) => <Text style={styles.rowRenderer}>{item}</Text>;
 
   fetchOlder = async () => {
-    await this.fetchData(
-      Math.max(this.state.lowestSequenceNumber - LIMIT, 0),
-      LIMIT,
-    );
+    if (this.state.lowestSequenceNumber > 0) {
+      this.setState({loadingOlder: true});
+      await this.fetchData(
+        Math.max(this.state.lowestSequenceNumber - LIMIT, 0),
+        LIMIT,
+      );
+    }
   };
 
   fetchNewer = async () => {
+    this.setState({loadingNewer: true});
     await this.fetchData(this.state.highestSequenceNumber, LIMIT);
   };
 
@@ -87,13 +93,11 @@ export class App extends Component {
           dataProvider={this.state.dataProvider}
           layoutProvider={this.layoutProvider}
           rowRenderer={this.rowRenderer}
-          extendedState={{someThingHappen: this.state.someThingHappen}}
           onEndReached={this.fetchNewer}
-          // onStartReached={() => {
-          //     console.log('Start reached!');
-          //     this.fetchOlder();
-          // }}
-          renderFooter={() => this.state.loadingMore && <ActivityIndicator />}
+          onStartReached={this.fetchOlder}
+          renderHeader={() => this.state.loadingOlder && <ActivityIndicator />}
+          renderFooter={() => this.state.loadingNewer && <ActivityIndicator />}
+          canChangeSize
         />
       </SafeAreaView>
     );

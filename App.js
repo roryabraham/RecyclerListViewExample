@@ -53,6 +53,7 @@ export class App extends Component {
         : [...data, ...prevState.data];
       return {
         data: mergedData,
+        // Note: Can optimize cloneWithRows by providing firstModifiedIndex, lastModifiedIndex
         dataProvider: prevState.dataProvider.cloneWithRows(mergedData),
         loadingNewer: false,
         loadingOlder: false,
@@ -97,6 +98,7 @@ export class App extends Component {
           onStartReached={this.fetchOlder}
           renderHeader={() => this.state.loadingOlder && <ActivityIndicator />}
           renderFooter={() => this.state.loadingNewer && <ActivityIndicator />}
+          initialOffset={Dimensions.get('window').height / 2}
           canChangeSize
         />
       </SafeAreaView>
